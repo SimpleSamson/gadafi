@@ -1,50 +1,20 @@
-import 'dart:io';
+import 'dart:async';
+import 'dart:io' show Platform;
+import 'package:flutter/foundation.dart' show kIsWeb;
 
-import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_tts/flutter_tts.dart';
-import 'package:webview_flutter/webview_flutter.dart';
-import 'package:beautiful_soup_dart/beautiful_soup.dart';
-import 'pdfSpeaker.dart';
-import 'workingprototype.dart';
-void main() {
-  runApp(workingPrototype());
-}
 
+//void main() => runApp(MyApp());
 
-class MyApp extends StatefulWidget {
+class workingPrototype extends StatefulWidget {
   @override
-  _MyAppState createState() => _MyAppState();
+  _workingPrototypeState createState() => _workingPrototypeState();
 }
 
 enum TtsState { playing, stopped, paused, continued }
 
-class _MyAppState extends State<MyApp> {
-
-  @override
-  Widget build(BuildContext context) {
-    return MaterialApp(
-      home: pdfSpeaker(),
-        // Scaffold(
-        // appBar: AppBar(
-        //   title: Text('Gadafi'),
-        // ),
-        //home: webSpeaker(),
-      routes:<String, WidgetBuilder>{
-        '/pdfSpeaker' : (BuildContext context) => pdfSpeaker(),
-        '/webSpeaker' : (BuildContext context) => webSpeaker(),
-        '/settingsPage': (BuildContext context) => settingsPage(),
-        }
-    );
-  }
-}
-class webSpeaker extends StatefulWidget{
-    @override
-  State<StatefulWidget> createState() => _webSpeakerState();
-  }
-
-class _webSpeakerState extends State<webSpeaker> {
-  ///////////////##############FROM HERE
+class _workingPrototypeState extends State<workingPrototype> {
   late FlutterTts flutterTts;
   String? language;
   String? engine;
@@ -57,8 +27,6 @@ class _webSpeakerState extends State<webSpeaker> {
   int? _inputLength;
 
   TtsState ttsState = TtsState.stopped;
-
-  final addressForReadingCtr = TextEditingController();
 
   get isPlaying => ttsState == TtsState.playing;
   get isStopped => ttsState == TtsState.stopped;
@@ -83,6 +51,7 @@ class _webSpeakerState extends State<webSpeaker> {
 
     if (isAndroid) {
       _getDefaultEngine();
+      _getDefaultVoice();
     }
 
     flutterTts.setStartHandler(() {
@@ -91,6 +60,14 @@ class _webSpeakerState extends State<webSpeaker> {
         ttsState = TtsState.playing;
       });
     });
+
+    if (isAndroid) {
+      flutterTts.setInitHandler(() {
+        setState(() {
+          print("TTS Initialized");
+        });
+      });
+    }
 
     flutterTts.setCompletionHandler(() {
       setState(() {
@@ -106,21 +83,19 @@ class _webSpeakerState extends State<webSpeaker> {
       });
     });
 
-    if (isWeb || isIOS || isWindows) {
-      flutterTts.setPauseHandler(() {
-        setState(() {
-          print("Paused");
-          ttsState = TtsState.paused;
-        });
+    flutterTts.setPauseHandler(() {
+      setState(() {
+        print("Paused");
+        ttsState = TtsState.paused;
       });
+    });
 
-      flutterTts.setContinueHandler(() {
-        setState(() {
-          print("Continued");
-          ttsState = TtsState.continued;
-        });
+    flutterTts.setContinueHandler(() {
+      setState(() {
+        print("Continued");
+        ttsState = TtsState.continued;
       });
-    }
+    });
 
     flutterTts.setErrorHandler((msg) {
       setState(() {
@@ -130,14 +105,21 @@ class _webSpeakerState extends State<webSpeaker> {
     });
   }
 
-  Future<dynamic> _getLanguages() => flutterTts.getLanguages;
+  Future<dynamic> _getLanguages() async => await flutterTts.getLanguages;
 
-  Future<dynamic> _getEngines() => flutterTts.getEngines;
+  Future<dynamic> _getEngines() async => await flutterTts.getEngines;
 
   Future _getDefaultEngine() async {
     var engine = await flutterTts.getDefaultEngine;
     if (engine != null) {
       print(engine);
+    }
+  }
+
+  Future _getDefaultVoice() async {
+    var voice = await flutterTts.getDefaultVoice;
+    if (voice != null) {
+      print(voice);
     }
   }
 
@@ -182,8 +164,8 @@ class _webSpeakerState extends State<webSpeaker> {
     return items;
   }
 
-  void changedEnginesDropDownItem(String? selectedEngine) {
-    flutterTts.setEngine(selectedEngine!);
+  void changedEnginesDropDownItem(String? selectedEngine) async {
+    await flutterTts.setEngine(selectedEngine!);
     language = null;
     setState(() {
       engine = selectedEngine;
@@ -217,26 +199,31 @@ class _webSpeakerState extends State<webSpeaker> {
       _newVoiceText = text;
     });
   }
-/////////////////################## here
+
   @override
   Widget build(BuildContext context) {
-    return SingleChildScrollView(
-      scrollDirection: Axis.vertical,
-      child: Flexible(
-        child: Column(
-          children: [
-            _inputSection(),
-            _btnSection(),
-            _engineSection(),
-            _futureBuilder(),
-            _buildSliders(),
-            if (isAndroid) _getMaxSpeechInputLengthSection(),
-          ],
+    return MaterialApp(
+      home: Scaffold(
+        appBar: AppBar(
+          title: Text('Flutter TTS'),
+        ),
+        body: SingleChildScrollView(
+          scrollDirection: Axis.vertical,
+          child: Column(
+            children: [
+              _inputSection(),
+              _btnSection(),
+              _engineSection(),
+              _futureBuilder(),
+              _buildSliders(),
+              if (isAndroid) _getMaxSpeechInputLengthSection(),
+            ],
+          ),
         ),
       ),
     );
-
   }
+
   Widget _engineSection() {
     if (isAndroid) {
       return FutureBuilder<dynamic>(
@@ -267,53 +254,39 @@ class _webSpeakerState extends State<webSpeaker> {
   Widget _inputSection() => Container(
       alignment: Alignment.topCenter,
       padding: EdgeInsets.only(top: 25.0, left: 25.0, right: 25.0),
-      child: Column(
-          children: [
-            TextFormField(controller: addressForReadingCtr, decoration: const InputDecoration(hintText: 'enter address'),),
-            WebView(initialUrl : addressForReadingCtr.text), //TODO convert the body into readable text and load intp below field
-            TextField(
-              onChanged: (String $toBeRead) {
-                _onChange($toBeRead);
-              },
-            )
-          ]
-      )
-  );
+      child: TextField(
+        maxLines: 11,
+        minLines: 6,
+        onChanged: (String value) {
+          _onChange(value);
+        },
+      ));
 
   Widget _btnSection() {
-    if (isAndroid) {
-      return Container(
-          padding: EdgeInsets.only(top: 50.0),
-          child:
-          Row(mainAxisAlignment: MainAxisAlignment.spaceEvenly, children: [
-            _buildButtonColumn(Colors.green, Colors.greenAccent,
-                Icons.play_arrow, 'PLAY', _speak),
-            _buildButtonColumn(
-                Colors.red, Colors.redAccent, Icons.stop, 'STOP', _stop),
-          ]));
-    } else {
-      return Container(
-          padding: EdgeInsets.only(top: 50.0),
-          child:
-          Row(mainAxisAlignment: MainAxisAlignment.spaceEvenly, children: [
-            _buildButtonColumn(Colors.green, Colors.greenAccent,
-                Icons.play_arrow, 'PLAY', _speak),
-            _buildButtonColumn(
-                Colors.red, Colors.redAccent, Icons.stop, 'STOP', _stop),
-            _buildButtonColumn(
-                Colors.blue, Colors.blueAccent, Icons.pause, 'PAUSE', _pause),
-          ]));
-    }
+    return Container(
+      padding: EdgeInsets.only(top: 50.0),
+      child: Row(
+        mainAxisAlignment: MainAxisAlignment.spaceEvenly,
+        children: [
+          _buildButtonColumn(Colors.green, Colors.greenAccent, Icons.play_arrow,
+              'PLAY', _speak),
+          _buildButtonColumn(
+              Colors.red, Colors.redAccent, Icons.stop, 'STOP', _stop),
+          _buildButtonColumn(
+              Colors.blue, Colors.blueAccent, Icons.pause, 'PAUSE', _pause),
+        ],
+      ),
+    );
   }
 
   Widget _enginesDropDownSection(dynamic engines) => Container(
-    padding: EdgeInsets.only(top: 50.0),
-    child: DropdownButton(
-      value: engine,
-      items: getEnginesDropDownMenuItems(engines),
-      onChanged: changedEnginesDropDownItem,
-    ),
-  );
+        padding: EdgeInsets.only(top: 50.0),
+        child: DropdownButton(
+          value: engine,
+          items: getEnginesDropDownMenuItems(engines),
+          onChanged: changedEnginesDropDownItem,
+        ),
+      );
 
   Widget _languageDropDownSection(dynamic languages) => Container(
       padding: EdgeInsets.only(top: 10.0),
