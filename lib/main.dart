@@ -8,9 +8,8 @@ import 'package:beautiful_soup_dart/beautiful_soup.dart';
 import 'pdfSpeaker.dart';
 import 'workingprototype.dart';
 void main() {
-  runApp(workingPrototype());
+  runApp(MyApp());
 }
-
 
 class MyApp extends StatefulWidget {
   @override

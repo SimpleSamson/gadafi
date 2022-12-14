@@ -41,7 +41,7 @@ class handleSpeakerReceiver extends StatefulWidget{
 }
 class _handleSpeakerReceiverState extends State<handleSpeakerReceiver>{
   BroadcastReceiver receiver = BroadcastReceiver(
-  names: <String>["org.airesol.gadafi.speakerReceiverHandling"]
+  names: <String>["arg.airesol.gadafi.speakerReceiverHandling"]
   );
 
   void initState(){

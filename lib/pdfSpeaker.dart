@@ -1,3 +1,4 @@
+import 'package:flutter/services.dart';
 //import 'dart:html';
 //import 'dart:html';
 import 'dart:io';
@@ -16,8 +17,25 @@ import 'controls.dart';
 import 'globalFx.dart';
 import 'settings.dart';
 String _textToBeRead = "Nothing Loaded Yet";
+bool _isPaused = false;
+bool _isStopped = false;
 bool _isLoading = false;
+bool _isPlaying = false;
+double volume = 0.7;
+double pitch = 1.0;
+double rate = 0.5;
 
+PDFDoc? _pdfDoc;
+
+String? language;
+String? engine;
+bool isCurrentLanguageInstalled = false;
+
+String? _newVoiceText;
+int? _inputLength;
+bool _awaitCompletion = false;
+
+TtsState ttsState = TtsState.stopped;
 //ProgressBarHandler? _handler; //= ProgressBarHandler();
 TextEditingController pageNumberController = TextEditingController();
 class pdfSpeaker extends StatefulWidget{
@@ -26,21 +44,14 @@ class pdfSpeaker extends StatefulWidget{
 }
 
 class _pdfSpeakerState extends State<pdfSpeaker> {
+  BroadcastReceiver receiver = BroadcastReceiver(
+    names: <String>[
+      "arg.airesol.gadafi._speak",
+    ],
+  );
 //  ProgressBarHandler _handler;
-  PDFDoc? _pdfDoc;
   late FlutterTts flutterTts;
-  String? language;
-  String? engine;
-  double volume = 0.7;
-  double pitch = 1.0;
-  double rate = 0.5;
-  bool isCurrentLanguageInstalled = false;
 
-  String? _newVoiceText;
-  int? _inputLength;
-  bool _awaitCompletion = false;
-
-  TtsState ttsState = TtsState.stopped;
 
   get isPlaying => ttsState == TtsState.playing;
 
@@ -61,6 +72,13 @@ class _pdfSpeakerState extends State<pdfSpeaker> {
   @override
   initState() {
     super.initState();
+    sendBroadcast(
+      BroadcastMessage(
+        name: "arg.airesol.gadafi._speak",
+      ),
+    );
+    receiver.start();
+    receiver.messages.listen(dictateBook); //TODO: make speak accessible from other apps
     initTts();
   }
 
@@ -143,6 +161,10 @@ class _pdfSpeakerState extends State<pdfSpeaker> {
         await flutterTts.speak(_newVoiceText!);
       }
     }
+    _isPaused = false;
+    _isPlaying = true;
+    _isLoading = false;
+    _isStopped = false;
   }
 
   Future _setAwaitOptions() async {
@@ -150,18 +172,26 @@ class _pdfSpeakerState extends State<pdfSpeaker> {
   }
 
   Future _stop() async {
+    _isStopped = true;
+    _isPaused = false;
+    _isPlaying = false;
     _isLoading = false;
     var result = await flutterTts.stop();
     if (result == 1) setState(() => ttsState = TtsState.stopped);
   }
 
   Future _pause() async {
+    _isStopped = false;
+    _isPaused = true;
+    _isPlaying = false;
+    _isLoading = false;
     var result = await flutterTts.pause();
     if (result == 1) setState(() => ttsState = TtsState.paused);
   }
 
   @override
   void dispose() {
+    receiver.stop();
     super.dispose();
     flutterTts.stop();
   }
@@ -226,15 +256,36 @@ class _pdfSpeakerState extends State<pdfSpeaker> {
           Column(
               mainAxisSize: MainAxisSize.min,
               mainAxisAlignment: MainAxisAlignment.center,
+              crossAxisAlignment: CrossAxisAlignment.center,
               children: [
                 _pdfChoiceSection(),
                 _btnSection(),
-                _isLoading ? _loadingTextProgress() : Text('')
+                _playerStatus(),
 
+                //use this to match the text and stream on screen
+                StreamBuilder<BroadcastMessage>(
+                  initialData: null,
+                  stream: receiver.messages,
+                  builder: (context, snapshot){
+                    //_newVoiceText = snapshot.data;
+                    print(snapshot.data);
+                    switch(snapshot.connectionState){
+                      case ConnectionState.active:
+                        return Text(snapshot.data.toString());
+
+                      case ConnectionState.none:
+                      case ConnectionState.done:
+                      case ConnectionState.waiting:
+                      default:
+                        return SizedBox();
+                    }
+                  }
+                )
         ]
           ),
         ],
       ),
+    //  floatingActionButton: FloatingActionButton(onPressed: _settingsDialog(), child: const Icon(Icons.build))
     );
   }
 
@@ -249,7 +300,14 @@ class _pdfSpeakerState extends State<pdfSpeaker> {
               minLeadingWidth: 35,
               title: Card(elevation: 7.0,
                   child: Column(children: [
-                    Image.asset('images/7.png', width: 147, height: 147)
+                    Image.asset('images/7.png', width: 147, height: 147),
+                    ElevatedButton(onPressed: (){
+                      _pickPdfDocument();
+                      //_isLoading ? _loadingTextProgress() : _showMouthing(); /* choose pdf*/
+                    },
+                        child: const Text('Choose')),
+                    //ElevatedButton(onPressed: (){ /* continue last reading */ }, child: const Text('continue')),
+
                   ])),
               onTap: ()=> _pickPdfDocument(),
 
@@ -263,24 +321,6 @@ class _pdfSpeakerState extends State<pdfSpeaker> {
                 //   }
                 //);
               //}
-          ),
-          Row(
-              mainAxisAlignment: MainAxisAlignment.spaceEvenly,
-              children: <Widget>[
-                ElevatedButton(onPressed: (){
-                  _pickPdfDocument;
-                  //_isLoading ? _loadingTextProgress() : _showMouthing(); /* choose pdf*/
-                  },
-                    child: const Text('Choose')),
-                //ElevatedButton(onPressed: (){ /* continue last reading */ }, child: const Text('continue')),
-                IconButton(onPressed: () {
-                  //_settingsDialog();
-                  //_settingsPage();
-                  Navigator.pushNamed(context, '/settingsPage');
-//                  settingsPage();
-                  //_enginesDropDownSection(engines)
-                }, icon: Icon(Icons.build))
-              ]
           ),
         ]
     );
@@ -301,6 +341,18 @@ class _pdfSpeakerState extends State<pdfSpeaker> {
     } else
       return Container(width: 0, height: 0);
   }
+  //languages
+  Widget _futureBuilder() => FutureBuilder<dynamic>(
+      future: _getLanguages(),
+      builder: (BuildContext context, AsyncSnapshot<dynamic> snapshot) {
+        if (snapshot.hasData) {
+          return _languageDropDownSection(snapshot.data);
+        } else if (snapshot.hasError) {
+          return Text('Error loading languages...');
+        } else
+          return Text('Loading Languages...');
+      }
+      );
 
   Widget _btnSection() {
     if (isAndroid) {
@@ -315,6 +367,8 @@ class _pdfSpeakerState extends State<pdfSpeaker> {
             //TODO:
             _buildButtonColumn(
                 Colors.red, Colors.redAccent, Icons.stop, 'STOP', _stop),
+            _buildButtonColumn(
+                Colors.brown, Colors.yellow, Icons.build, 'SETTINGS', _settingsDialog),
           ]));
     } else {
       return Container(
@@ -326,7 +380,7 @@ class _pdfSpeakerState extends State<pdfSpeaker> {
             _buildButtonColumn(
                 Colors.red, Colors.redAccent, Icons.stop, 'STOP', _stop),
             _buildButtonColumn(
-                Colors.blue, Colors.blueAccent, Icons.pause, 'PAUSE', _pause),
+                Colors.brown, Colors.yellow, Icons.pause, 'SETTINGS', _settingsDialog),
           ]));
     }
   }
@@ -440,44 +494,56 @@ class _pdfSpeakerState extends State<pdfSpeaker> {
   }
 
   Widget _pitch() {
-    return //StatefulBuilder(
-        //builder:(context, state) =>
+    return StatefulBuilder(
+        builder:(context, state) =>
     Slider(
         value: pitch,
         onChanged: (newPitch) {
           setState(() => pitch = newPitch);
-          //state(() => pitch = newPitch);
+          state(() => pitch = newPitch);
         },
         min: 0.5,
         max: 2.0,
         divisions: 15,
         label: "Pitch: $pitch",
         activeColor: Colors.red,
-      //)
+      )
     );
   }
 
   Widget _rate() {
-    return Slider(
+    return StatefulBuilder(builder: (context, state) =>
+        Slider(
       value: rate,
       onChanged: (newRate) {
         setState(() => rate = newRate);
-        //state(() => rate = newRate);
+        state(() => rate = newRate);
       },
       min: 0.0,
       max: 1.0,
       divisions: 10,
       label: "Rate: $rate",
       activeColor: Colors.green,
+    )
     );
   }
 
   Future _pickPdfDocument() async {
+    var filePickerResult = await FilePicker.platform.pickFiles(
+      type: FileType.custom,
+      allowedExtensions:['pdf'],
+    );
+    if(filePickerResult == null){
+      return AlertDialog(
+          title: const Icon(Icons.warning_amber_rounded),
+          content: const Text('No document has been selected. \n Please try again.'),
+          actions: [ElevatedButton(onPressed: (){ Navigator.of(context).pop(); }, child: const Text('OK'))]
+      );
+    }
     setState((){
       _isLoading = true;
       //   _loadingTextProgress();
     });
-    var filePickerResult = await FilePicker.platform.pickFiles();
     if (filePickerResult != null) {
       _pdfDoc = await PDFDoc.fromPath(filePickerResult.files.single.path!);
       // Future x = await _awaitSynthCompletion().timeout(const Duration(seconds: 0), onTimeout:(){
@@ -495,6 +561,7 @@ class _pdfSpeakerState extends State<pdfSpeaker> {
         //_awaitSynthCompletion() == null ? _loadingTextProgress(): _showMouthing();
 //        while(TtsState.playing == true){
         _isLoading = false;
+        _isPlaying = true;
         _showMouthing(); //TODO: change or integrate       _awaitCompletion and _awaitSynthCompletion();
 //        }
         _newVoiceText = docText.toString();
@@ -550,7 +617,8 @@ class _pdfSpeakerState extends State<pdfSpeaker> {
               mainAxisAlignment: MainAxisAlignment.end,
               children: [CloseButton()],
             ),
-            content: Column(
+            content: Expanded(
+                child:Column(
               mainAxisAlignment: MainAxisAlignment.center,
               crossAxisAlignment: CrossAxisAlignment.center,
               children: [
@@ -558,9 +626,10 @@ class _pdfSpeakerState extends State<pdfSpeaker> {
                 Expanded(
                   child: Center(child: Image.asset('images/malemouth.gif')),
                 ),
-                _jumpToPage()
+                _jumpToPage(),
+                _playerStatus(),
               ],
-            ), contentPadding: EdgeInsets.all(17), actions: [_btnSection()]
+            ),), contentPadding: EdgeInsets.all(17), actions: [_btnSection()]
         )));
     return Text('');
   }
@@ -586,7 +655,11 @@ class _pdfSpeakerState extends State<pdfSpeaker> {
             labelText: 'Page',
           ),
         ),
-        ElevatedButton(onPressed: (){_readFromPage(int.parse(pageNumberController.text));}, child: const Text("GO TO PAGE"))
+        ElevatedButton(onPressed: (){
+//          _pause(); //TODO
+          _newVoiceText = _readFromPage(int.parse(pageNumberController.text)).toString();
+          _isLoading = true;
+          }, child: const Text("GO TO PAGE"))
       ],
     );
   }
@@ -615,7 +688,7 @@ class _pdfSpeakerState extends State<pdfSpeaker> {
      AlertDialog(
             //mainAxisAlignment: MainAxisAlignment.center,
             //crossAxisAlignment: CrossAxisAlignment.center,
-       title:Text('settings'),
+       title:Center(child:Text('settings', textAlign: TextAlign.center)),
             content: //StatefulBuilder(
               //builder: (context, state) =>
                   Column(
@@ -633,21 +706,41 @@ class _pdfSpeakerState extends State<pdfSpeaker> {
     )
     ));
   }
-  Widget _settingsDialog(){
-    //Navigator.push(context, MaterialPageRoute(builder: (BuildContext context) =>
-     return AlertDialog(
-      title: Text('settings'),
+  _settingsDialog(){
+    Navigator.push(context, MaterialPageRoute(builder: (BuildContext context) =>
+     AlertDialog(
+      title: Text('settings', textAlign: TextAlign.center),
       content: Column(
               children: [
-              _buildSliders(),
-              _engineSection(),
+                _buildSliders(),
               Text("Choose Engine"),
-              ElevatedButton(onPressed: () {
-                Navigator.pushNamed(context, '/pdfSpeaker');
-              }, child: const Text("SAVE"))
-                ]
+                _engineSection(),
+                Text('Choose Language'),
+                _futureBuilder(),
+                ElevatedButton(onPressed: () {
+                  Navigator.pushNamed(context, '/pdfSpeaker');
+                }, child: const Text("SAVE")),
+              ]
       )
-    );//));
+    )
+    ));
+    return Container();
+  }
+
+  _playerStatus() {
+    //TODO here
+    // return Container(padding: EdgeInsets.all(7), child: Column(children: [
+    //   _isLoading ? _loadingTextProgress() : Text(''),
+    //   _isPlaying ? Text('Currently reading a document...'): Text(''),
+    //   //TODO  _isStopped ? Text('Playback Stopped...'): Text(''),
+    //   _isPaused ? Text('Playback Paused...'): Text(''),
+    // ]));
+     return Column(children: [
+      _isLoading ? _loadingTextProgress() : Text(''),
+      _isPlaying ? Text('Currently reading a document...'): Text(''),
+      //TODO  _isStopped ? Text('Playback Stopped...'): Text(''),
+      _isPaused ? Text('Playback Paused...'): Text(''),
+    ]);
   }
 }
 class settingsPage extends StatefulWidget{
@@ -671,5 +764,37 @@ class _settingsPageState extends State<pdfSpeaker>{
       ),
     );
   }
+}
 
+
+class pdfSpeakerSharing extends StatefulWidget{
+  @override
+  _pdfSpeakerSharingState createState() => _pdfSpeakerSharingState();
+}
+
+class _pdfSpeakerSharingState extends State<pdfSpeakerSharing>{
+  static const platform = MethodChannel('app.channel.shared.data');
+  File? dataShared;// = 'No data'
+  void initState(){
+    super.initState();
+    getSharedPdf();
+  }
+
+  @override
+  Widget build(BuildContext context){
+    return Scaffold(body: Center());
+  }
+  Future<void> getSharedPdf() async{
+    var sharedPdf = await platform.invokeMethod('getSharedPdf');
+    if(dataShared != null){
+      setState((){
+        dataShared = sharedPdf;
+      });
+    }
+  }
+}
+void dictateBook(var receivedBook){
+  _pdfSpeakerState x = _pdfSpeakerState();
+//  _newVoiceText = receivedBook.; //the book that has been sent via a broadcast
+//  x._speak(); //speak the book
 }
