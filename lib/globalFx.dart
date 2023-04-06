@@ -30,6 +30,7 @@ class _gadafiTitle extends State<gadafiTitle> {
             });
 //            Navigator.pushNamed(context, '/webSpeaker');
           }, icon: const Icon(Icons.http))),
+          Center(child: IconButton(onPressed: (){Navigator.pushNamed(context, '/aboutGadafi');}, icon: Icon(Icons.question_mark_rounded)),)
         ]
     );
   }

@@ -3,6 +3,7 @@ import 'dart:io';
 import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_tts/flutter_tts.dart';
+import 'package:gadafi/aboutGadafi.dart';
 import 'package:webview_flutter/webview_flutter.dart';
 import 'package:beautiful_soup_dart/beautiful_soup.dart';
 import 'pdfSpeaker.dart';
@@ -33,6 +34,7 @@ class _MyAppState extends State<MyApp> {
         '/pdfSpeaker' : (BuildContext context) => pdfSpeaker(),
         '/webSpeaker' : (BuildContext context) => webSpeaker(),
         '/settingsPage': (BuildContext context) => settingsPage(),
+        '/aboutGadafi': (BuildContext context) => aboutGadafi(),
         }
     );
   }

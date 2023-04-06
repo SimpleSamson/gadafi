@@ -1,3 +1,4 @@
+import 'dart:math';
 import 'package:flutter/services.dart';
 //import 'dart:html';
 //import 'dart:html';
@@ -44,11 +45,11 @@ class pdfSpeaker extends StatefulWidget{
 }
 
 class _pdfSpeakerState extends State<pdfSpeaker> {
-  BroadcastReceiver receiver = BroadcastReceiver(
-    names: <String>[
-      "arg.airesol.gadafi._speak",
-    ],
-  );
+  // BroadcastReceiver receiver = BroadcastReceiver(
+  //   names: <String>[
+  //     "arg.airesol.gadafi._speak",
+  //   ],
+  // );
 //  ProgressBarHandler _handler;
   late FlutterTts flutterTts;
 
@@ -72,13 +73,13 @@ class _pdfSpeakerState extends State<pdfSpeaker> {
   @override
   initState() {
     super.initState();
-    sendBroadcast(
-      BroadcastMessage(
-        name: "arg.airesol.gadafi._speak",
-      ),
-    );
-    receiver.start();
-    receiver.messages.listen(dictateBook); //TODO: make speak accessible from other apps
+    // sendBroadcast(
+    //   BroadcastMessage(
+    //     name: "arg.airesol.gadafi._speak",
+    //   ),
+    // );
+    // receiver.start();
+    // receiver.messages.listen(dictateBook); //TODO: make speak accessible from other apps
     initTts();
   }
 
@@ -191,7 +192,7 @@ class _pdfSpeakerState extends State<pdfSpeaker> {
 
   @override
   void dispose() {
-    receiver.stop();
+    // receiver.stop();
     super.dispose();
     flutterTts.stop();
   }
@@ -262,25 +263,25 @@ class _pdfSpeakerState extends State<pdfSpeaker> {
                 _btnSection(),
                 _playerStatus(),
 
-                //use this to match the text and stream on screen
-                StreamBuilder<BroadcastMessage>(
-                  initialData: null,
-                  stream: receiver.messages,
-                  builder: (context, snapshot){
-                    //_newVoiceText = snapshot.data;
-                    print(snapshot.data);
-                    switch(snapshot.connectionState){
-                      case ConnectionState.active:
-                        return Text(snapshot.data.toString());
-
-                      case ConnectionState.none:
-                      case ConnectionState.done:
-                      case ConnectionState.waiting:
-                      default:
-                        return SizedBox();
-                    }
-                  }
-                )
+                // //use this to match the text and stream on screen
+                // StreamBuilder<BroadcastMessage>(
+                //   initialData: null,
+                //   stream: receiver.messages,
+                //   builder: (context, snapshot){
+                //     //_newVoiceText = snapshot.data;
+                //     print(snapshot.data);
+                //     switch(snapshot.connectionState){
+                //       case ConnectionState.active:
+                //         return Text(snapshot.data.toString());
+                //
+                //       case ConnectionState.none:
+                //       case ConnectionState.done:
+                //       case ConnectionState.waiting:
+                //       default:
+                //         return SizedBox();
+                //     }
+                //   }
+                // )
         ]
           ),
         ],
@@ -436,10 +437,10 @@ class _pdfSpeakerState extends State<pdfSpeaker> {
   Future<String> speechInputDivided(String inputText) async {
     String y = 'Loading. Please wait';
     int? x = await flutterTts.getMaxSpeechInputLength;
-    print(x.toString());
+ //   print(x.toString());
     if (inputText.length > x!) {
       //divide the input into parts and read them in sequence
-      for (int i = 0; i < 10000000; i + x) {
+      for (int i = 0; i < pow(10, 10000000); i + x) { //raising to a high number to avoid stopping in between reading.
         y = inputText.substring(0 + i, x + i);
       }
     }
@@ -585,6 +586,64 @@ class _pdfSpeakerState extends State<pdfSpeaker> {
       });
     }
   }
+
+
+  Future _pickPdfDocument2(String? pdfPathString) async {
+
+    if(pdfPathString == null){
+      return AlertDialog(
+          title: const Icon(Icons.warning_amber_rounded),
+          content: const Text('No document has been selected. \n Please try again.'),
+          actions: [ElevatedButton(onPressed: (){ Navigator.of(context).pop(); }, child: const Text('OK'))]
+      );
+    }
+    // setState((){
+    //   _isLoading = true;
+    //   //   _loadingTextProgress();
+    // });
+    if (pdfPathString != null) {
+      _pdfDoc = await PDFDoc.fromPath(pdfPathString);
+      // Future x = await _awaitSynthCompletion().timeout(const Duration(seconds: 0), onTimeout:(){
+      //   _loadingTextProgress();
+      // });
+      String docText = await _pdfDoc!.text;//.timeout(const Duration(seconds: 3), onTimeout: (){_loadingTextProgress(); return 'Loading. Please be patient as this may take a while.';});
+      //_newVoiceText = await speechInputDivided(docText.toString()); //as String?;
+
+      setState(() {
+        //_handler.show();
+        //_newVoiceText = await speechInputDivided(docText.toString());
+        //isPlaying ? _loadingTextProgress(): _showMouthing();
+        //this works (_speak() != true)? _showMouthing() : _loadingTextProgress();
+        //_awaitSynthCompletion();
+        //_awaitSynthCompletion() == null ? _loadingTextProgress(): _showMouthing();
+//        while(TtsState.playing == true){
+        _isLoading = false;
+        _isPlaying = true;
+        _showMouthing(); //TODO: change or integrate       _awaitCompletion and _awaitSynthCompletion();
+//        }
+        _newVoiceText = docText.toString();
+        // setState((){
+        //       showProgress = !showProgress;
+        //       if(showProgress){
+        //         Future.delayed(const Duration(milliseconds: 1700),(){
+        //           setState((){
+        //             progress = 0.7;
+        //           });
+        //         });
+        //         fab = Icon(Icons.stop);
+        //       }else{
+        //         fab = Icon(Icons.refresh);
+        //       }
+        //     }
+        // );
+
+        _speak();
+        //_handler.dismiss();
+      });
+    }
+  }
+
+
   Widget _loadingTextProgress() {
     // Icon fab = Icon(Icons.refresh);
     bool showProgress = false;
