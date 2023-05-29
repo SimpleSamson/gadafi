@@ -1,4 +1,4 @@
-package arg.airesol.gadafi;
+package org.airesol.gadafi;
 
 import android.content.Context;
 import android.content.Intent;

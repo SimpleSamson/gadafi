@@ -1,4 +1,4 @@
-package arg.airesol.gadafi
+package org.airesol.gadafi
 import java.io.File
 import android.os.Bundle
 import android.graphics.pdf.PdfDocument

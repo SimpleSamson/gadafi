@@ -1,5 +1,4 @@
 import 'package:flutter/material.dart';
-//import 'lib/material.dart';
 import 'package:flutter_broadcasts/flutter_broadcasts.dart';
 import 'pdfSpeaker.dart';
 String? _textToBeRead = "Nothing Loaded";
@@ -14,7 +13,8 @@ class _gadafiTitle extends State<gadafiTitle> {
     return Row(
         mainAxisAlignment: MainAxisAlignment.spaceEvenly,
         children: [
-          Text("Gadafi"),
+          Image.asset('images/3.png', width: 35, height: 35,),
+          //Text("Gadafi"),
           Center(child: IconButton(onPressed: () {
             Navigator.pushNamed(context, '/pdfSpeaker');
           }, icon: const Icon(Icons.picture_as_pdf_outlined))),
@@ -42,7 +42,7 @@ class handleSpeakerReceiver extends StatefulWidget{
 }
 class _handleSpeakerReceiverState extends State<handleSpeakerReceiver>{
   BroadcastReceiver receiver = BroadcastReceiver(
-  names: <String>["arg.airesol.gadafi.speakerReceiverHandling"]
+  names: <String>["org.airesol.gadafi.speakerReceiverHandling"]
   );
 
   void initState(){

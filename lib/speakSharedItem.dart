@@ -1,4 +1,4 @@
-import 'lib/material.dart';
+import 'package:flutter/material.dart';
 import 'pdfSpeaker.dart';
 // class speakSharedItem extends StatefulWidget{
 //   @override

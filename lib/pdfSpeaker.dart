@@ -47,7 +47,7 @@ class pdfSpeaker extends StatefulWidget{
 class _pdfSpeakerState extends State<pdfSpeaker> {
   // BroadcastReceiver receiver = BroadcastReceiver(
   //   names: <String>[
-  //     "arg.airesol.gadafi._speak",
+  //     "org.airesol.gadafi._speak",
   //   ],
   // );
 //  ProgressBarHandler _handler;
@@ -75,7 +75,7 @@ class _pdfSpeakerState extends State<pdfSpeaker> {
     super.initState();
     // sendBroadcast(
     //   BroadcastMessage(
-    //     name: "arg.airesol.gadafi._speak",
+    //     name: "org.airesol.gadafi._speak",
     //   ),
     // );
     // receiver.start();
@@ -441,6 +441,7 @@ class _pdfSpeakerState extends State<pdfSpeaker> {
     if (inputText.length > x!) {
       //divide the input into parts and read them in sequence
       for (int i = 0; i < pow(10, 10000000); i + x) { //raising to a high number to avoid stopping in between reading.
+//TODO: cut into sections that user can seek back and forward
         y = inputText.substring(0 + i, x + i);
       }
     }
@@ -660,7 +661,7 @@ class _pdfSpeakerState extends State<pdfSpeaker> {
                   Column(
                   mainAxisAlignment: MainAxisAlignment.center,
                   crossAxisAlignment: CrossAxisAlignment.center,
-                  children: [
+                  children: const [
                     CircularProgressIndicator(),
                     Text('Loading. Please wait...', style: TextStyle(fontSize: 20),)
                   ]),
