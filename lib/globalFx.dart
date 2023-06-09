@@ -2,7 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_broadcasts/flutter_broadcasts.dart';
 import 'pdfSpeaker.dart';
 String? _textToBeRead = "Nothing Loaded";
-
+String defaultStartAddress = 'http://www.airesol.org/gadafi';
 class gadafiTitle extends StatefulWidget{
   @override
   State<StatefulWidget> createState() => _gadafiTitle();
@@ -19,7 +19,7 @@ class _gadafiTitle extends State<gadafiTitle> {
             Navigator.pushNamed(context, '/pdfSpeaker');
           }, icon: const Icon(Icons.picture_as_pdf_outlined))),
           Center(child: IconButton(onPressed: () {
-            showDialog(context: context, builder: (BuildContext context){
+/*            showDialog(context: context, builder: (BuildContext context){
               return AlertDialog(
                 title: const Text('READ ONLINE PAGES'),
                 content: const Text('UNDER CONSTRUCTION \nPlease Check Back Soon After Updating'),
@@ -28,7 +28,7 @@ class _gadafiTitle extends State<gadafiTitle> {
                 ],
               );
             });
-//            Navigator.pushNamed(context, '/webSpeaker');
+*/            Navigator.pushNamed(context, '/webSpeaker');
           }, icon: const Icon(Icons.http))),
           Center(child: IconButton(onPressed: (){Navigator.pushNamed(context, '/aboutGadafi');}, icon: Icon(Icons.question_mark_rounded)),)
         ]
