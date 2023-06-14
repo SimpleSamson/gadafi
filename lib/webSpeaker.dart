@@ -507,10 +507,10 @@ class _webSpeakerState extends State<webSpeaker> {
       setState(() {
         _isLoading = false;
         _isPlaying = true;
-        print('address content is $_addressContent');
+  //      print('address content is $_addressContent');
         _newVoiceText = _addressContent.toString();
-        print('new voice is $_newVoiceText');
-     //   _speak();
+    //    print('new voice is $_newVoiceText');
+        _speak();
       //  _showMouthing(); //TODO: change or integrate       _awaitCompletion and _awaitSynthCompletion();
       });
     }
